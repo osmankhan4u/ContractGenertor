@@ -18,20 +18,17 @@ jobs:
           dotnet-version: '7.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore ./ContractGeneratorBlazor/ContractGeneratorBlazor.csproj
 
       - name: Build
-        run: dotnet build --configuration Release
+        run: dotnet build ./ContractGeneratorBlazor/ContractGeneratorBlazor.csproj --configuration Release
 
       - name: Publish
-        run: dotnet publish -c Release -o ./publish
-
-      - name: Create deployment package
-        run: zip -r release.zip ./publish
+        run: dotnet publish ./ContractGeneratorBlazor/ContractGeneratorBlazor.csproj -c Release -o ./publish
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: ContractGeneratorBlazor20250924232310
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISH_PROFILE }}
-          package: release.zip
+          package: ./publish
