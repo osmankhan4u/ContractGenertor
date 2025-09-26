@@ -81,6 +81,7 @@ namespace ContractGeneratorBlazor.Services
 
         public async Task<byte[]> GenerateContractsAsync(Stream excelStream, string contractType, string outputFormat)
         {
+            // Load contract templates from configuration
             var contracts = LoadContracts();
             var templateConfig = contracts.FirstOrDefault(c => c.Type == contractType);
             _logger.LogInformation($"Selected contract type: {contractType}");
