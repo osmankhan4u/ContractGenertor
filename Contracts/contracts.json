@@ -1,0 +1,12 @@
+[
+  {
+    "Type": "EmploymentContractType",
+    "Placeholders": {
+      "{EmployeeName}": "{EmployeeName}",
+      "{StartDate}": "{StartDate}",
+      "{EndDate}": "{EndDate}",
+      "{Salary}": "{Salary}"
+    },
+    "TemplatePath": "C:\\dotNET\\ContractGeneratorBlazor\\Contracts\\DocumentTemp.docx"
+  }
+]

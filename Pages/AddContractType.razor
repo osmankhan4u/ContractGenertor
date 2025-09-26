@@ -1,0 +1,179 @@
+@page "/add-contract-type"
+@using ContractGeneratorBlazor.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components
+@inject IContractService ContractService
+
+<PageTitle>Add Contract Type</PageTitle>
+
+<h3>Add New Contract Type</h3>
+<div class="mb-3">
+    <label>Contract Type:</label>
+    <input class="form-control" @bind="newContractType" />
+</div>
+<div class="mb-3">
+    <label>Placeholders (comma separated, e.g. Name,Date):</label>
+    <input class="form-control" @bind="newPlaceholdersRaw" />
+</div>
+<div class="mb-3">
+    <label>Upload Word Template:</label>
+    <InputFile OnChange="HandleTemplateUpload" />
+</div>
+<button class="btn btn-secondary" @onclick="AddContract" disabled="@isAdding">Add Contract</button>
+@if (!string.IsNullOrEmpty(addContractMessage))
+{
+    <div class="mt-2 text-success">@addContractMessage</div>
+}
+@if (isAdding)
+{
+    <div class="mt-3">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span class="ms-2">Adding contract, please wait...</span>
+    </div>
+}
+
+<h3>Existing Contract Types</h3>
+@if (contractTemplates.Count == 0)
+{
+    <div>No contract types found.</div>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Placeholders</th>
+                <th>Template Path</th>
+                <th>Edit</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var contract in contractTemplates)
+            {
+                <tr>
+                    <td>@contract.Type</td>
+                    <td>@string.Join(", ", contract.Placeholders.Keys)</td>
+                    <td>@contract.TemplatePath</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" @onclick="() => EditContract(contract)">Edit</button>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteContract(contract)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (editingContract != null)
+{
+    <div class="card mt-4">
+        <div class="card-header">Edit Contract Type: @editingContract.Type</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label>Contract Type:</label>
+                <input class="form-control" @bind="editingContract.Type" />
+            </div>
+            <div class="mb-3">
+                <label>Placeholders (comma separated, e.g. Name,Date):</label>
+                <input class="form-control" @bind="editingPlaceholdersRaw" />
+            </div>
+            <div class="mb-3">
+                <label>Template Path:</label>
+                <input class="form-control" @bind="editingContract.TemplatePath" />
+            </div>
+            <button class="btn btn-primary" @onclick="SaveEdit">Save</button>
+            <button class="btn btn-secondary ms-2" @onclick="CancelEdit">Cancel</button>
+        </div>
+    </div>
+}
+
+@code {
+    private string newContractType = string.Empty;
+    private string newPlaceholdersRaw = string.Empty;
+    private IBrowserFile? templateFile;
+    private bool isAdding = false;
+    private string? addContractMessage;
+
+    private List<ContractGeneratorBlazor.Models.ContractTemplate> contractTemplates = new();
+    private ContractGeneratorBlazor.Models.ContractTemplate? editingContract;
+    private string editingPlaceholdersRaw = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        contractTemplates = ContractService.LoadContracts();
+    }
+
+    private void HandleTemplateUpload(InputFileChangeEventArgs e) => templateFile = e.File;
+
+    private async Task AddContract()
+    {
+        if (string.IsNullOrWhiteSpace(newContractType) || templateFile == null)
+        {
+            addContractMessage = "Please provide contract type and upload a template.";
+            return;
+        }
+        isAdding = true;
+        var placeholders = new Dictionary<string, string>();
+        foreach (var ph in newPlaceholdersRaw.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var key = ph.Trim();
+            if (!string.IsNullOrEmpty(key))
+            {
+                var placeholder = $"{{{key}}}";
+                placeholders[placeholder] = placeholder;
+            }
+        }
+        var fileName = templateFile.Name;
+        using var stream = templateFile.OpenReadStream();
+        await ContractService.AddContractAsync(newContractType, placeholders, stream, fileName);
+        addContractMessage = $"Contract '{newContractType}' added successfully.";
+        newContractType = string.Empty;
+        newPlaceholdersRaw = string.Empty;
+        templateFile = null;
+        isAdding = false;
+    }
+
+    private void EditContract(ContractGeneratorBlazor.Models.ContractTemplate contract)
+    {
+        editingContract = contract;
+        editingPlaceholdersRaw = string.Join(", ", contract.Placeholders.Keys.Select(p => p.Replace("{", "").Replace("}", "")));
+    }
+
+    private void CancelEdit()
+    {
+        editingContract = null;
+        editingPlaceholdersRaw = string.Empty;
+    }
+
+    private void SaveEdit()
+    {
+        if (editingContract != null)
+        {
+            var newPlaceholders = new Dictionary<string, string>();
+            foreach (var ph in editingPlaceholdersRaw.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var key = ph.Trim();
+                if (!string.IsNullOrEmpty(key))
+                {
+                    var placeholder = $"{{{key}}}";
+                    newPlaceholders[placeholder] = placeholder;
+                }
+            }
+            editingContract.Placeholders = newPlaceholders;
+            ContractService.SaveContracts(contractTemplates);
+            editingContract = null;
+            editingPlaceholdersRaw = string.Empty;
+        }
+    }
+
+    private void DeleteContract(ContractGeneratorBlazor.Models.ContractTemplate contract)
+    {
+        contractTemplates.Remove(contract);
+        ContractService.SaveContracts(contractTemplates);
+        StateHasChanged();
+    }
+}
