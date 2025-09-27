@@ -18,13 +18,13 @@ jobs:
           dotnet-version: '7.0.x'
 
       - name: Restore dependencies
-  run: dotnet restore ContractGeneratorBlazor.csproj
+        run: dotnet restore ContractGeneratorBlazor.csproj
 
-- name: Build
-  run: dotnet build ContractGeneratorBlazor.csproj --configuration Release
+      - name: Build
+        run: dotnet build ContractGeneratorBlazor.csproj --configuration Release
 
-- name: Publish
-  run: dotnet publish ContractGeneratorBlazor.csproj -c Release -o ./publish
+      - name: Publish
+        run: dotnet publish ContractGeneratorBlazor.csproj -c Release -o ./publish
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
