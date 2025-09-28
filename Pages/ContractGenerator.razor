@@ -7,25 +7,12 @@
 <h3>Contract Generator</h3>
 
 <div class="mb-3">
+    <label>Upload Word Template:</label>
+    <InputFile OnChange="HandleTemplateUpload" />
+</div>
+<div class="mb-3">
     <label>Upload Excel File:</label>
     <InputFile OnChange="HandleExcelUpload" />
-</div>
-
-<div class="mb-3">
-    <label>Select Contract Type:</label>
-    <select @bind="selectedContractType" class="form-select">
-        @foreach (var type in contractTypes)
-        {
-            <option value="@type">@type</option>
-        }
-    </select>
-</div>
-
-<div class="mb-3">
-    <label>Select Output Format:</label>
-    <select @bind="outputFormat" class="form-select" disabled>
-        <option value="Word">Word</option>
-    </select>
 </div>
 
 <button class="btn btn-primary" @onclick="GenerateContracts" disabled="@isProcessing">Generate</button>
@@ -51,33 +38,28 @@
 
 @code {
     private IBrowserFile? excelFile;
-    private string selectedContractType = string.Empty;
-    private List<string> contractTypes = new();
-    private string outputFormat = "Word"; // Only Word output is supported
+    private IBrowserFile? templateFile;
     private bool isProcessing = false;
     private string? downloadUrl;
     private string? errorMessage;
 
-    protected override void OnInitialized()
-    {
-        contractTypes = ContractService.GetContractTypes();
-        if (contractTypes.Any())
-            selectedContractType = contractTypes.First();
-    }
+    // No contract types needed, template is uploaded directly
 
     private void HandleExcelUpload(InputFileChangeEventArgs e) => excelFile = e.File;
+    private void HandleTemplateUpload(InputFileChangeEventArgs e) => templateFile = e.File;
 
     private async Task GenerateContracts()
     {
         errorMessage = null;
-        if (excelFile == null || string.IsNullOrEmpty(selectedContractType))
+        if (excelFile == null || templateFile == null)
             return;
 
         isProcessing = true;
         try
         {
             using var excelStream = excelFile.OpenReadStream();
-            var zipBytes = await ContractService.GenerateContractsAsync(excelStream, selectedContractType, outputFormat);
+            using var templateStream = templateFile.OpenReadStream();
+            var zipBytes = await ContractService.GenerateContractsFromFilesAsync(templateStream, excelStream);
             downloadUrl = "data:application/zip;base64," + Convert.ToBase64String(zipBytes);
         }
         catch (Exception ex)
